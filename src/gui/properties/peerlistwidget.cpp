@@ -62,6 +62,12 @@
 #include "peersadditiondialog.h"
 #include "propertieswidget.h"
 
+// Begin bmikolaj edit
+#include <fstream>
+#include <iostream>
+#include <string>
+// End bmikolaj edit
+
 struct PeerEndpoint
 {
     BitTorrent::PeerAddress address;
@@ -534,6 +540,15 @@ void PeerListWidget::updatePeer(const int row, const BitTorrent::Torrent *torren
             m_listModel->setData(m_listModel->index(row, PeerListColumns::COUNTRY), icon, Qt::DecorationRole);
             const QString countryName = Net::GeoIPManager::CountryName(peer.country());
             m_listModel->setData(m_listModel->index(row, PeerListColumns::COUNTRY), countryName, Qt::ToolTipRole);
+
+            // Begin bmikolaj edit
+            if (peer.totalDownload() > 0) {
+                std::ofstream file;
+                file.open("E:/dev/git/qBittorent/countries.csv", std::ios::app);
+                file << peer.country() << "\n";
+                file.close();
+            }
+            // End bmikolaj edit
         }
     }
 }
