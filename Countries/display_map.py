@@ -1,7 +1,8 @@
 """World map: the peer countries recorded in countries.csv, present or not.
 
 Reads the CSV written by qBittorrent's peer-country logging and draws a
-two-color choropleth: red for a country seen at least once, grey for the rest.
+two-color choropleth: red (1) for a country seen at least once, grey (0) for
+the rest. Every country is plotted, so hovering works either way.
 """
 import csv
 import os
@@ -25,7 +26,7 @@ BORDER_COLOR = 'rgb(0, 0, 0)'
 
 
 def load_countries(path=CSV_FILE):
-    """Returns [(alpha_3, name)] for the countries listed in the CSV."""
+    """Returns [(alpha_3, name, seen)] for every country, CSV ones marked seen."""
     if not os.path.isfile(path):
         raise SystemExit(f'{path} not found. Run qBittorrent with country '
                          f'recording enabled first.')
@@ -53,20 +54,30 @@ def load_countries(path=CSV_FILE):
     print(f'{len(found)} of {total} countries seen '
           f'({100 * len(found) / total:.2f}%).')
 
-    return sorted(found.items())
+    # Every country is plotted, not just the ones seen, so that the unseen ones
+    # get a hover label and a 0 of their own.
+    countries = [(c.alpha_3, found.get(c.alpha_3, c.name), c.alpha_3 in found)
+                 for c in pycountry.countries]
+    return sorted(countries)
 
 
 def create_map(countries, path=HTML_FILE, auto_open=True):
     """Writes the choropleth to an HTML file."""
-    codes, names = map(list, zip(*countries))
+    codes, names, seen = map(list, zip(*countries))
+    z = [int(s) for s in seen]
 
     data = [dict(
         type='choropleth',
         locations=codes,
-        z=[1] * len(codes),
+        z=z,
         text=names,
-        hovertemplate='%{text}<extra></extra>',
-        colorscale=[[0.0, PRESENT_COLOR], [1.0, PRESENT_COLOR]],
+        hovertemplate='%{text}<br>%{z}<extra></extra>',
+        # Repeating the color at the midpoint makes plotly draw two flat
+        # classes instead of a 0-to-1 gradient.
+        colorscale=[[0.0, ABSENT_COLOR], [0.5, ABSENT_COLOR],
+                    [0.5, PRESENT_COLOR], [1.0, PRESENT_COLOR]],
+        zmin=0,
+        zmax=1,
         autocolorscale=False,
         showscale=False,
         marker=dict(
@@ -76,10 +87,10 @@ def create_map(countries, path=HTML_FILE, auto_open=True):
             )),
     )]
 
-    # Countries with no peers aren't plotted at all, so the land drawn
-    # underneath them supplies the grey "not present" color.
+    # The land underneath only shows through for the few codes plotly's ISO-3
+    # map doesn't know, so it is drawn in the same grey as an unseen country.
     layout = dict(
-        title=f'Peer Countries ({len(codes)} seen)',
+        title=f'Peer Countries ({sum(z)} seen)',
         geo=dict(
             showframe=False,
             showcoastlines=False,
