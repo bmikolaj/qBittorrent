@@ -102,7 +102,7 @@ namespace
 
     Path seenCountriesFilePath()
     {
-        return Path(u"E:/dev/git/qBittorrent/Countires/countries.csv"_s);
+        return Path(u"E:/dev/git/qBittorrent/Countries/countries.csv"_s);
     }
 
     // Wraps a CSV field in quotes so that separators inside it are preserved.
