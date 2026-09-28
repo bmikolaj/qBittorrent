@@ -98,6 +98,11 @@ private:
     void updatePeer(int row, const BitTorrent::Torrent *torrent, const BitTorrent::PeerInfo &peer, bool hideZeroValues);
     int visibleColumnsCount() const;
 
+    // Begin bmikolaj edit
+    void loadSeenCountries();
+    void saveSeenCountries();
+    // End bmikolaj edit
+
     void wheelEvent(QWheelEvent *event) override;
 
     QStandardItemModel *m_listModel = nullptr;
@@ -108,4 +113,9 @@ private:
     QHash<QHostAddress, QSet<QStandardItem *>> m_itemsByIP;  // must be kept in sync with `m_peerItems`
     bool m_resolveCountries = false;
     bool m_resolveHostNames = false;
+
+    // Begin bmikolaj edit
+    QSet<QString> m_seenCountries;  // ISO country codes, persisted to CSV on destruction
+    bool m_seenCountriesDirty = false;
+    // End bmikolaj edit
 };

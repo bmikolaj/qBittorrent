@@ -65,9 +65,9 @@
 #include "propertieswidget.h"
 
 // Begin bmikolaj edit
-#include <fstream>
-#include <iostream>
-#include <string>
+#include "base/path.h"
+#include "base/utils/bytearray.h"
+#include "base/utils/io.h"
 // End bmikolaj edit
 
 struct PeerEndpoint
@@ -96,6 +96,25 @@ namespace
 
         model->setItemData(model->index(row, column), data);
     }
+
+    // Begin bmikolaj edit
+    const qint64 COUNTRIES_FILE_MAX_SIZE = 1024 * 1024;
+
+    Path seenCountriesFilePath()
+    {
+        return Path(u"E:/dev/git/qBittorrent/Countires/countries.csv"_s);
+    }
+
+    // Wraps a CSV field in quotes so that separators inside it are preserved.
+    QString quoteCSVField(const QString &value)
+    {
+        QString quoted = value;
+        quoted.replace(u'"', u"\"\""_s);
+        quoted.prepend(u'"');
+        quoted.append(u'"');
+        return quoted;
+    }
+    // End bmikolaj edit
 }
 
 PeerListWidget::PeerListWidget(PropertiesWidget *parent)
@@ -199,12 +218,78 @@ PeerListWidget::PeerListWidget(PropertiesWidget *parent)
     connect(copyHotkey, &QShortcut::activated, this, &PeerListWidget::copySelectedPeers);
     const auto *deleteHotkey = new QShortcut(Utils::KeySequence::deleteItem(), this, nullptr, nullptr, Qt::WidgetShortcut);
     connect(deleteHotkey, &QShortcut::activated, this, &PeerListWidget::banSelectedPeers);
+
+    // Begin bmikolaj edit
+    loadSeenCountries();
+    // End bmikolaj edit
 }
 
 PeerListWidget::~PeerListWidget()
 {
     saveSettings();
+
+    // Begin bmikolaj edit
+    saveSeenCountries();
+    // End bmikolaj edit
 }
+
+// Begin bmikolaj edit
+// Reads the countries recorded by previous runs, so that the file keeps accumulating
+// instead of being overwritten with only the countries seen in this session.
+void PeerListWidget::loadSeenCountries()
+{
+    const Path filePath = seenCountriesFilePath();
+    const auto readResult = Utils::IO::readFile(filePath, COUNTRIES_FILE_MAX_SIZE, QIODevice::Text);
+    if (!readResult)
+    {
+        if (readResult.error().status != Utils::IO::ReadError::NotExist)
+        {
+            LogMsg(tr("Failed to load countries file. File: \"%1\". Error: \"%2\"")
+                    .arg(filePath.toString(), readResult.error().message), Log::WARNING);
+        }
+        return;
+    }
+
+    const QList<QByteArrayView> lines = Utils::ByteArray::splitToViews(readResult.value(), "\n");
+    for (const QByteArrayView line : lines)
+    {
+        // Only the first field holds the ISO code, the rest is the human readable name.
+        const qsizetype separatorIndex = line.indexOf(',');
+        const QByteArrayView codeField = (separatorIndex < 0) ? line : line.first(separatorIndex);
+        const QString code = QString::fromUtf8(codeField).trimmed();
+        if (code.isEmpty() || (code == u"code"))  // also skips the header line
+            continue;
+
+        m_seenCountries.insert(code);
+    }
+}
+
+// Writes the whole set at once. Called on destruction only, so the per-poll cost of
+// recording a country stays limited to a hash lookup.
+void PeerListWidget::saveSeenCountries()
+{
+    if (!m_seenCountriesDirty)
+        return;
+
+    QStringList codes(m_seenCountries.cbegin(), m_seenCountries.cend());
+    std::sort(codes.begin(), codes.end());
+
+    QString data = u"code,name\n"_s;
+    for (const QString &code : asConst(codes))
+        data += code + u',' + quoteCSVField(Net::GeoIPManager::CountryName(code)) + u'\n';
+
+    const Path filePath = seenCountriesFilePath();
+    const nonstd::expected<void, QString> result = Utils::IO::saveToFile(filePath, data.toUtf8());
+    if (!result)
+    {
+        LogMsg(tr("Failed to save countries file. File: \"%1\". Error: \"%2\"")
+                .arg(filePath.toString(), result.error()), Log::WARNING);
+        return;
+    }
+
+    m_seenCountriesDirty = false;
+}
+// End bmikolaj edit
 
 void PeerListWidget::displayColumnHeaderMenu()
 {
@@ -569,11 +654,15 @@ void PeerListWidget::updatePeer(const int row, const BitTorrent::Torrent *torren
             m_listModel->setData(m_listModel->index(row, PeerListColumns::COUNTRY), countryName, Qt::ToolTipRole);
 
             // Begin bmikolaj edit
-            if (peer.totalDownload() > 0) {
-                std::ofstream file;
-                file.open("E:/dev/git/qBittorent/countries.csv", std::ios::app);
-                file << peer.country() << "\n";
-                file.close();
+            // Keep a running set in memory; it is flushed to disk once, on destruction.
+            if (peer.totalDownload() > 0)
+            {
+                const QString countryCode = peer.country();
+                if (!countryCode.isEmpty() && !m_seenCountries.contains(countryCode))
+                {
+                    m_seenCountries.insert(countryCode);
+                    m_seenCountriesDirty = true;
+                }
             }
             // End bmikolaj edit
         }
