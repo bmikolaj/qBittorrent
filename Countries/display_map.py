@@ -87,8 +87,11 @@ def create_map(countries, path=HTML_FILE, auto_open=True):
             landcolor=ABSENT_COLOR,
             showcountries=True,
             countrycolor=BORDER_COLOR,
+            lonaxis=dict(range=[-180, 180]),
+            lataxis=dict(range=[-60, 85]),
             projection=dict(
-                type='mercator'
+                type='mercator',
+                rotation=dict(lon=0)
             )
         )
     )
