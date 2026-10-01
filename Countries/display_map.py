@@ -5,6 +5,7 @@ two-color choropleth: red (1) for a country seen at least once, grey (0) for
 the rest. Every country is plotted, so hovering works either way.
 """
 import csv
+from datetime import datetime
 import os
 
 import plotly.graph_objects as go
@@ -30,6 +31,9 @@ def load_countries(path=CSV_FILE):
     if not os.path.isfile(path):
         raise SystemExit(f'{path} not found. Run qBittorrent with country '
                          f'recording enabled first.')
+
+    modified = datetime.fromtimestamp(os.path.getmtime(path))
+    print(f'{path} last modified {modified:%Y-%m-%d %H:%M:%S}')
 
     found = {}
     unknown = []
