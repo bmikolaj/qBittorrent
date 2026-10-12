@@ -652,20 +652,21 @@ void PeerListWidget::updatePeer(const int row, const BitTorrent::Torrent *torren
             m_listModel->setData(m_listModel->index(row, PeerListColumns::COUNTRY), icon, Qt::DecorationRole);
             const QString countryName = Net::GeoIPManager::CountryName(peer.country());
             m_listModel->setData(m_listModel->index(row, PeerListColumns::COUNTRY), countryName, Qt::ToolTipRole);
-
-            // Begin bmikolaj edit
-            // Keep a running set in memory; it is flushed to disk once, on destruction.
-            if (peer.totalDownload() > 0)
-            {
-                const QString countryCode = peer.country();
-                if (!countryCode.isEmpty() && !m_seenCountries.contains(countryCode))
-                {
-                    m_seenCountries.insert(countryCode);
-                    m_seenCountriesDirty = true;
-                }
-            }
-            // End bmikolaj edit
         }
+
+        // Begin bmikolaj edit
+        // Record the resolved country. Keep a running set in memory;
+        // it is flushed to disk once, on destruction.
+        if (peer.totalDownload() > 0)
+        {
+            const QString countryCode = peer.country();
+            if (!countryCode.isEmpty() && !m_seenCountries.contains(countryCode))
+            {
+                m_seenCountries.insert(countryCode);
+                m_seenCountriesDirty = true;
+            }
+        }
+        // End bmikolaj edit
     }
 }
 
