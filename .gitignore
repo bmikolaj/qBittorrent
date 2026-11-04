@@ -42,5 +42,10 @@ src/icons/skin/build-icons/icons/*.png
 # CMake build directory
 build/
 
+# bmikolaj
 /Countries/.idea/*
 /Countries/__pycache__/*
+.github/*
+.tx/*
+/Countries/countries-world-map.html
+/Countries/countries.csv
