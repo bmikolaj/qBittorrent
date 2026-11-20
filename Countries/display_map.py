@@ -18,8 +18,8 @@ HTML_FILE = 'countries-world-map.html'
 
 def color(x):
     # https://www.quackit.com/css/css_color_codes.cfm
-    rint = webcolors.name_to_rgb(x)
-    return f'rgb({rint.red}, {rint.green}, {rint.blue})'
+    r, g, b = webcolors.name_to_rgb(x)
+    return f'rgb({r}, {g}, {b})'
 
 PRESENT_COLOR = color('red')
 ABSENT_COLOR = color('lightgrey')
@@ -65,7 +65,7 @@ def load_countries(path=CSV_FILE):
     return sorted(countries)
 
 
-def create_map(countries, path=HTML_FILE, auto_open=True):
+def create_map(countries, path=HTML_FILE):
     """Writes the choropleth to an HTML file."""
     codes, names, seen = map(list, zip(*countries))
     z = [int(s) for s in seen]
@@ -112,7 +112,7 @@ def create_map(countries, path=HTML_FILE, auto_open=True):
     )
 
     fig = go.Figure(data=data, layout=layout)
-    pio.write_html(fig, file=path, auto_open=auto_open)
+    pio.write_html(fig, file=path, auto_open=True)
     print(f'Wrote {path}')
 
 
